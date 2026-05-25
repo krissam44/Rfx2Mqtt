@@ -82,16 +82,27 @@ builder.Logging.SetMinimumLevel(LogLevel.Information);
 builder.WebHost.UseUrls(
     builder.Configuration["WebUi:Url"] ?? "http://0.0.0.0:5080");
 
-// EN: Static Web Assets (_content/ files from RCL packages like MudBlazor) — required outside
-//     of the published mode (dotnet run, Visual Studio).
-// FR: Static Web Assets (fichiers _content/ des packages RCL comme MudBlazor) — nécessaire en
-//     dehors du mode published (dotnet run, Visual Studio).
-builder.WebHost.UseStaticWebAssets();
+// EN: Static Web Assets (_content/ files from RCL packages like MudBlazor) — only needed in
+//     development (dotnet run, Visual Studio). In published / Docker mode the assets are
+//     already physically copied into wwwroot/, and calling this can break /_framework/blazor.web.js.
+// FR: Static Web Assets (fichiers _content/ des packages RCL comme MudBlazor) — utile uniquement
+//     en développement (dotnet run, Visual Studio). En mode publié / Docker les fichiers sont
+//     déjà physiquement dans wwwroot/, et appeler ceci peut casser /_framework/blazor.web.js.
+if (builder.Environment.IsDevelopment())
+{
+    builder.WebHost.UseStaticWebAssets();
+}
 
 var app = builder.Build();
 
-app.UseStaticFiles();
+// EN: MapStaticAssets() (NET 9+) serves both wwwroot/ files AND framework assets like
+//     _framework/blazor.web.js from the staticwebassets endpoints manifest. Replaces the
+//     legacy UseStaticFiles() which only serves physical files from wwwroot/.
+// FR: MapStaticAssets() (NET 9+) sert à la fois les fichiers de wwwroot/ ET les assets
+//     framework comme _framework/blazor.web.js depuis le manifest staticwebassets endpoints.
+//     Remplace l'ancien UseStaticFiles() qui ne servait que les fichiers physiques.
 app.UseAntiforgery();
+app.MapStaticAssets();
 
 app.MapRazorComponents<Rfx2Mqtt.UI.Components.App>()
    .AddInteractiveServerRenderMode();
