@@ -3,14 +3,14 @@
 > 🇬🇧 **English version: [README.md](README.md)**
 
 Un pont léger entre un **transceiver RFXCom 433 MHz** et un **broker MQTT**, avec interface
-web Blazor Server pour la configuration et le monitoring. Construit sur .NET 10.
+web Blazor Server pour la configuration et le monitoring. Construit sur .NET 9.
 
 Reçoit les sondes Oregon / Bresser / Viking, pilote les volets Somfy RTS et les prises
 Chacon/DIO, capte les détecteurs de mouvement X10 Security — le tout exposé en MQTT au
 format Zigbee2MQTT compatible, avec auto-découverte Home Assistant optionnelle.
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
+[![.NET 9](https://img.shields.io/badge/.NET-9.0-512BD4)](https://dotnet.microsoft.com/)
 [![Docker](https://img.shields.io/badge/docker-multi--arch-2496ED?logo=docker)](#docker)
 
 ---
@@ -106,7 +106,7 @@ cd Rfx2Mqtt
 dotnet run --project Rfx2Mqtt/Rfx2Mqtt.csproj
 ```
 
-Nécessite le SDK .NET 10.
+Nécessite le SDK .NET 9.
 
 ## Configuration
 

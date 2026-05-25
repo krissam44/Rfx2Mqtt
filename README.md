@@ -3,14 +3,14 @@
 > 🇫🇷 **Version française : [README.fr.md](README.fr.md)**
 
 A lightweight bridge between an **RFXCom 433 MHz transceiver** and any **MQTT broker**, with a
-Blazor Server web UI for configuration and monitoring. Built on .NET 10.
+Blazor Server web UI for configuration and monitoring. Built on .NET 9.
 
 Receives data from Oregon / Bresser / Viking weather probes, controls Somfy RTS blinds and
 Chacon/DIO outlets, picks up X10 Security motion detectors — all exposed on MQTT in a
 Zigbee2MQTT-friendly format, with optional Home Assistant MQTT Discovery.
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
+[![.NET 9](https://img.shields.io/badge/.NET-9.0-512BD4)](https://dotnet.microsoft.com/)
 [![Docker](https://img.shields.io/badge/docker-multi--arch-2496ED?logo=docker)](#docker)
 
 ---
@@ -104,7 +104,7 @@ cd Rfx2Mqtt
 dotnet run --project Rfx2Mqtt/Rfx2Mqtt.csproj
 ```
 
-Requires .NET 10 SDK.
+Requires .NET 9 SDK.
 
 ## Configuration
 
