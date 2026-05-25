@@ -1,0 +1,299 @@
+@page "/appareils"
+@inject IDeviceRepository Devices
+@inject ConfigFileService Config
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject MqttService Mqtt
+@implements IDisposable
+
+<PageTitle>Appareils — Rfx2Mqtt</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-6" Style="color: #66bb6a; font-weight: 300;">
+    <MudIcon Icon="@Icons.Material.Filled.Devices" Class="mr-2" />
+    Appareils configurés
+</MudText>
+
+<MudText Typo="Typo.body2" Style="color: #546e7a;" Class="mb-4">
+    Stockés dans <span style="font-family: monospace;">data/devices.yaml</span> — modifications appliquées immédiatement, pas besoin de redémarrer.
+</MudText>
+
+<!-- ── Sondes Oregon ─────────────────────────────────────────────────────────── -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+    <MudText Typo="Typo.h6" Style="color: #90a4ae;">Sondes Oregon / Température-Humidité</MudText>
+    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add" OnClick="AddOregon">
+        Ajouter
+    </MudButton>
+</div>
+
+<MudPaper Elevation="3" Class="mb-6">
+    <MudTable Items="_snapshot.Oregon" Dense="true" Hover="true" Elevation="0">
+        <HeaderContent>
+            <MudTh>Nom</MudTh>
+            <MudTh>ID sonde</MudTh>
+            <MudTh>Topic MQTT</MudTh>
+            <MudTh Style="width: 90px;"></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Name</MudTd>
+            <MudTd Style="font-family: monospace;">@context.Id</MudTd>
+            <MudTd Style="font-family: monospace; color: #546e7a; font-size: 0.8rem;">
+                rfxcom/sensor/th/@context.Name
+            </MudTd>
+            <MudTd>
+                <div style="display: flex; gap: 0;">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                   OnClick="@(() => EditOregon(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="@(() => DeleteOregon(context))" />
+                </div>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Style="color: #546e7a; padding: 16px;">
+                Aucune sonde configurée. Les sondes non nommées publient sur
+                <span style="font-family: monospace;">rfxcom/sensor/th/0xXXXX</span>.
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+<!-- ── Volets Somfy ─────────────────────────────────────────────────────────── -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+    <MudText Typo="Typo.h6" Style="color: #90a4ae;">Volets Somfy RTS</MudText>
+    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add" OnClick="AddSomfy">
+        Ajouter
+    </MudButton>
+</div>
+
+<MudPaper Elevation="3" Class="mb-6">
+    <MudTable Items="_snapshot.Somfy" Dense="true" Hover="true" Elevation="0">
+        <HeaderContent>
+            <MudTh>Nom</MudTh>
+            <MudTh>ID (3 octets hex)</MudTh>
+            <MudTh>Unit Code</MudTh>
+            <MudTh>SubType</MudTh>
+            <MudTh Style="width: 130px;"></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Name</MudTd>
+            <MudTd Style="font-family: monospace;">@context.Id</MudTd>
+            <MudTd>@context.UnitCode</MudTd>
+            <MudTd>@context.SubType</MudTd>
+            <MudTd>
+                <div style="display: flex; gap: 0;">
+                    <MudTooltip Text="Envoyer commande Program (appairage)">
+                        <MudIconButton Icon="@Icons.Material.Filled.SettingsRemote" Size="Size.Small"
+                                       Color="Color.Warning"
+                                       OnClick="@(() => ProgramSomfy(context))" />
+                    </MudTooltip>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                   OnClick="@(() => EditSomfy(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="@(() => DeleteSomfy(context))" />
+                </div>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Style="color: #546e7a; padding: 16px;">Aucun volet Somfy configuré.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+<!-- ── Prises Chacon ────────────────────────────────────────────────────────── -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+    <MudText Typo="Typo.h6" Style="color: #90a4ae;">Prises / Interrupteurs Chacon</MudText>
+    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add" OnClick="AddChacon">
+        Ajouter
+    </MudButton>
+</div>
+
+<MudPaper Elevation="3">
+    <MudTable Items="_snapshot.Chacon" Dense="true" Hover="true" Elevation="0">
+        <HeaderContent>
+            <MudTh>Nom</MudTh>
+            <MudTh>ID (4 octets hex)</MudTh>
+            <MudTh>Unit Code</MudTh>
+            <MudTh>SubType</MudTh>
+            <MudTh Style="width: 90px;"></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>@context.Name</MudTd>
+            <MudTd Style="font-family: monospace;">@context.Id</MudTd>
+            <MudTd>@context.UnitCode</MudTd>
+            <MudTd>@context.SubType</MudTd>
+            <MudTd>
+                <div style="display: flex; gap: 0;">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                   OnClick="@(() => EditChacon(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="@(() => DeleteChacon(context))" />
+                </div>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Style="color: #546e7a; padding: 16px;">Aucune prise Chacon configurée.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    private DeviceCollection _snapshot = DeviceCollection.Empty;
+
+    protected override void OnInitialized()
+    {
+        _snapshot = Devices.Snapshot;
+        Devices.Changed += OnDevicesChanged;
+    }
+
+    public void Dispose()
+    {
+        Devices.Changed -= OnDevicesChanged;
+    }
+
+    private void OnDevicesChanged()
+    {
+        _snapshot = Devices.Snapshot;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveAsync(DeviceCollection updated)
+    {
+        try
+        {
+            await Devices.SaveAsync(updated);
+            Snackbar.Add("Sauvegardé", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erreur : {ex.Message}", Severity.Error);
+        }
+    }
+
+    // ── Oregon ────────────────────────────────────────────────────────────────
+
+    private async Task AddOregon()
+    {
+        var device = new OregonDevice();
+        if (!await ShowOregonDialog("Nouvelle sonde Oregon", device)) return;
+        var updated = _snapshot with { Oregon = [.. _snapshot.Oregon, device] };
+        await SaveAsync(updated);
+    }
+
+    private async Task EditOregon(OregonDevice device)
+    {
+        var copy = new OregonDevice { Name = device.Name, Id = device.Id };
+        if (!await ShowOregonDialog("Modifier la sonde", copy)) return;
+        var updated = _snapshot with
+        {
+            Oregon = _snapshot.Oregon.Select(d => d == device ? copy : d).ToList()
+        };
+        await SaveAsync(updated);
+    }
+
+    private async Task DeleteOregon(OregonDevice device)
+    {
+        var updated = _snapshot with { Oregon = _snapshot.Oregon.Where(d => d != device).ToList() };
+        await SaveAsync(updated);
+    }
+
+    private async Task<bool> ShowOregonDialog(string title, OregonDevice device)
+    {
+        var parameters = new DialogParameters<DeviceEditDialog<OregonDevice>> { { x => x.Device, device } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<DeviceEditDialog<OregonDevice>>(title, parameters, options);
+        var result = await dialog.Result;
+        return result is { Canceled: false };
+    }
+
+    // ── Somfy ─────────────────────────────────────────────────────────────────
+
+    private async Task ProgramSomfy(SomfyDevice device)
+    {
+        await Mqtt.PublishAsync(
+            $"{Config.LoadMqttOptions().TopicPrefix}/command/somfy/{device.Name}",
+            "{\"command\":\"program\"}");
+        Snackbar.Add($"Commande Program envoyée à \"{device.Name}\" — le store doit être en mode appairage", Severity.Warning);
+    }
+
+    private async Task AddSomfy()
+    {
+        var device = new SomfyDevice();
+        if (!await ShowSomfyDialog("Nouveau volet Somfy", device)) return;
+        var updated = _snapshot with { Somfy = [.. _snapshot.Somfy, device] };
+        await SaveAsync(updated);
+    }
+
+    private async Task EditSomfy(SomfyDevice device)
+    {
+        var copy = new SomfyDevice
+        {
+            Name = device.Name, Id = device.Id, UnitCode = device.UnitCode, SubType = device.SubType
+        };
+        if (!await ShowSomfyDialog("Modifier le volet", copy)) return;
+        var updated = _snapshot with
+        {
+            Somfy = _snapshot.Somfy.Select(d => d == device ? copy : d).ToList()
+        };
+        await SaveAsync(updated);
+    }
+
+    private async Task DeleteSomfy(SomfyDevice device)
+    {
+        var updated = _snapshot with { Somfy = _snapshot.Somfy.Where(d => d != device).ToList() };
+        await SaveAsync(updated);
+    }
+
+    private async Task<bool> ShowSomfyDialog(string title, SomfyDevice device)
+    {
+        var parameters = new DialogParameters<DeviceEditDialog<SomfyDevice>> { { x => x.Device, device } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<DeviceEditDialog<SomfyDevice>>(title, parameters, options);
+        var result = await dialog.Result;
+        return result is { Canceled: false };
+    }
+
+    // ── Chacon ────────────────────────────────────────────────────────────────
+
+    private async Task AddChacon()
+    {
+        var device = new ChaconDevice();
+        if (!await ShowChaconDialog("Nouvelle prise Chacon", device)) return;
+        var updated = _snapshot with { Chacon = [.. _snapshot.Chacon, device] };
+        await SaveAsync(updated);
+    }
+
+    private async Task EditChacon(ChaconDevice device)
+    {
+        var copy = new ChaconDevice
+        {
+            Name = device.Name, Id = device.Id, UnitCode = device.UnitCode, SubType = device.SubType
+        };
+        if (!await ShowChaconDialog("Modifier la prise", copy)) return;
+        var updated = _snapshot with
+        {
+            Chacon = _snapshot.Chacon.Select(d => d == device ? copy : d).ToList()
+        };
+        await SaveAsync(updated);
+    }
+
+    private async Task DeleteChacon(ChaconDevice device)
+    {
+        var updated = _snapshot with { Chacon = _snapshot.Chacon.Where(d => d != device).ToList() };
+        await SaveAsync(updated);
+    }
+
+    private async Task<bool> ShowChaconDialog(string title, ChaconDevice device)
+    {
+        var parameters = new DialogParameters<DeviceEditDialog<ChaconDevice>> { { x => x.Device, device } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<DeviceEditDialog<ChaconDevice>>(title, parameters, options);
+        var result = await dialog.Result;
+        return result is { Canceled: false };
+    }
+}

@@ -1,0 +1,267 @@
+@page "/decouverte"
+@inject UiEventService Events
+@inject IDeviceRepository Devices
+@inject ISnackbar Snackbar
+@implements IDisposable
+@* Polling du ring buffer — pas de souscription événement pour éviter les fuites *@
+
+<PageTitle>Découverte — Rfx2Mqtt</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-2" Style="color: #66bb6a; font-weight: 300;">
+    <MudIcon Icon="@Icons.Material.Filled.Search" Class="mr-2" />
+    Découverte automatique
+</MudText>
+<MudText Typo="Typo.body2" Style="color: #546e7a;" Class="mb-6">
+    Appuyez sur une télécommande ou activez un équipement : il apparaîtra ici.
+    Cliquez sur <strong>Ajouter</strong> pour l'enregistrer dans la configuration.
+</MudText>
+
+@if (!_discovered.Any())
+{
+    <MudAlert Severity="Severity.Info">
+        En attente de trames... Activez un équipement non encore configuré.
+    </MudAlert>
+}
+else
+{
+    <MudPaper Elevation="3">
+        <MudTable Items="_discovered.Values" Dense="true" Hover="true" Elevation="0">
+            <HeaderContent>
+                <MudTh>Type</MudTh>
+                <MudTh>ID</MudTh>
+                <MudTh>Unit Code</MudTh>
+                <MudTh>Dernière trame</MudTh>
+                <MudTh>Vu</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>
+                    <MudChip T="string" Size="Size.Small"
+                             Style="@($"background: {TypeColor(context.PacketType)}; color: #fff; font-size: 0.75rem;")">
+                        @context.PacketType
+                    </MudChip>
+                </MudTd>
+                <MudTd Style="font-family: monospace;">@context.DeviceId</MudTd>
+                <MudTd>@(context.UnitCode?.ToString() ?? "—")</MudTd>
+                <MudTd Style="font-size: 0.85rem;">@context.Summary</MudTd>
+                <MudTd Style="color: #546e7a; font-size: 0.8rem;">@context.SeenCount× — @context.LastSeen.ToString("HH:mm:ss")</MudTd>
+                <MudTd>
+                    @if (!context.AlreadyConfigured)
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
+                                   OnClick="@(() => Add(context))">
+                            Ajouter
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Style="background: #2e7d32; color: #fff; font-size: 0.75rem;">
+                            Configuré
+                        </MudChip>
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+
+    <MudButton Class="mt-4" Variant="Variant.Outlined" Size="Size.Small"
+               StartIcon="@Icons.Material.Filled.DeleteSweep"
+               OnClick="@(() => { _discovered.Clear(); StateHasChanged(); })">
+        Effacer la liste
+    </MudButton>
+}
+
+<!-- Panel d'ajout rapide -->
+@if (_adding != null)
+{
+    <MudPaper Class="pa-4 mt-4" Elevation="6" Style="border-left: 4px solid #66bb6a; max-width: 480px;">
+        <MudText Typo="Typo.subtitle1" Class="mb-3" Style="color: #66bb6a;">Ajouter l'appareil</MudText>
+        <MudText Typo="Typo.body2" Style="color: #90a4ae;" Class="mb-3">
+            ID : <span style="font-family: monospace;">@_adding.DeviceId</span>
+            @if (_adding.UnitCode.HasValue)
+            {
+                <span> — Unit Code : @_adding.UnitCode</span>
+            }
+        </MudText>
+        <MudTextField @bind-Value="_newName" Label="Nom" Variant="Variant.Outlined" Class="mb-3"
+                      HelperText="Sera utilisé dans le topic MQTT" />
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+            <MudButton Variant="Variant.Outlined"
+                       OnClick="@(() => _adding = null)">
+                Annuler
+            </MudButton>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                       Disabled="@string.IsNullOrWhiteSpace(_newName)"
+                       OnClick="ConfirmAdd">
+                Ajouter
+            </MudButton>
+        </div>
+    </MudPaper>
+}
+
+@code {
+    private readonly Dictionary<string, DiscoveredDevice> _discovered = new();
+    private bool _disposed;
+    private int _lastProcessed;   // nombre d'événements déjà traités dans le ring buffer
+    private Timer? _timer;
+
+    private DiscoveredDevice? _adding;
+    private string _newName = "";
+
+    protected override void OnInitialized()
+    {
+        _timer = new Timer(_ =>
+        {
+            if (_disposed) return;
+            InvokeAsync(() =>
+            {
+                if (ProcessNewEvents()) StateHasChanged();
+            });
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(2));
+    }
+
+    private bool ProcessNewEvents()
+    {
+        var all = Events.GetRecent();   // du plus récent au plus ancien
+        var newCount = all.Count - _lastProcessed;
+        if (newCount <= 0) return false;
+
+        _lastProcessed = all.Count;
+        var snapshot = Devices.Snapshot;
+        bool changed = false;
+
+        // Parcourir uniquement les nouveaux (en début de liste = les plus récents)
+        foreach (var evt in all.Take(newCount))
+        {
+            if (evt.PacketType != "Chacon" && evt.PacketType != "Somfy" && evt.PacketType != "TH/THB") continue;
+
+            var key = $"{evt.PacketType}/{evt.DeviceId}";
+            bool configured = evt.PacketType switch
+            {
+                "Somfy"  => snapshot.Somfy.Any(d => d.Id.Replace(" ", "") == evt.DeviceId.Replace("0x", "").Replace(" ", "")),
+                "TH/THB" => snapshot.Oregon.Any(d => d.Id.Equals(evt.DeviceId, StringComparison.OrdinalIgnoreCase)),
+                _        => snapshot.Chacon.Any(d => d.Id.Replace(" ", "") == evt.DeviceId.Replace("0x", "").Replace(" ", ""))
+            };
+
+            byte? unitCode = null;
+            if (evt.Summary.Contains("unit="))
+            {
+                var part = evt.Summary.Split("unit=").Last().Split(' ').First();
+                if (byte.TryParse(part, out var u)) unitCode = u;
+            }
+
+            if (_discovered.TryGetValue(key, out var existing))
+            {
+                existing.SeenCount++;
+                existing.LastSeen = evt.ReceivedAt;
+                existing.Summary = evt.Summary;
+                existing.AlreadyConfigured = configured;
+            }
+            else
+            {
+                _discovered[key] = new DiscoveredDevice
+                {
+                    PacketType = evt.PacketType,
+                    DeviceId = evt.DeviceId,
+                    UnitCode = unitCode,
+                    Summary = evt.Summary,
+                    LastSeen = evt.ReceivedAt,
+                    SeenCount = 1,
+                    AlreadyConfigured = configured
+                };
+            }
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    private void Add(DiscoveredDevice device)
+    {
+        _adding = device;
+        _newName = "";
+    }
+
+    private async Task ConfirmAdd()
+    {
+        if (_adding is null || string.IsNullOrWhiteSpace(_newName)) return;
+
+        // Normaliser l'ID : retirer le "0x" et s'assurer des espaces
+        var rawId = _adding.DeviceId.Replace("0x", "");
+        if (!rawId.Contains(' '))
+        {
+            rawId = string.Join(" ", Enumerable.Range(0, rawId.Length / 2)
+                .Select(i => rawId.Substring(i * 2, 2)));
+        }
+
+        var snapshot = Devices.Snapshot;
+        DeviceCollection updated;
+
+        if (_adding.PacketType == "Somfy")
+        {
+            var newDev = new SomfyDevice
+            {
+                Name = _newName.Trim(),
+                Id = rawId,
+                UnitCode = _adding.UnitCode ?? 1
+            };
+            updated = snapshot with { Somfy = [.. snapshot.Somfy, newDev] };
+        }
+        else if (_adding.PacketType == "TH/THB")
+        {
+            var newDev = new OregonDevice
+            {
+                Name = _newName.Trim(),
+                Id = _adding.DeviceId   // conserver le format 0xXXXX tel quel
+            };
+            updated = snapshot with { Oregon = [.. snapshot.Oregon, newDev] };
+        }
+        else
+        {
+            var newDev = new ChaconDevice
+            {
+                Name = _newName.Trim(),
+                Id = rawId,
+                UnitCode = _adding.UnitCode ?? 1
+            };
+            updated = snapshot with { Chacon = [.. snapshot.Chacon, newDev] };
+        }
+
+        try
+        {
+            await Devices.SaveAsync(updated);
+            _adding.AlreadyConfigured = true;
+            _adding = null;
+            Snackbar.Add($"Appareil \"{_newName}\" ajouté", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erreur : {ex.Message}", Severity.Error);
+        }
+    }
+
+    private static string TypeColor(string t) => t switch
+    {
+        "Somfy"  => "#546e7a",
+        "Chacon" => "#1565c0",
+        "TH/THB" => "#2e7d32",
+        _ => "#424242"
+    };
+
+    public void Dispose()
+    {
+        _disposed = true;
+        _timer?.Dispose();
+    }
+
+    private class DiscoveredDevice
+    {
+        public string PacketType { get; set; } = "";
+        public string DeviceId { get; set; } = "";
+        public byte? UnitCode { get; set; }
+        public string Summary { get; set; } = "";
+        public DateTime LastSeen { get; set; }
+        public int SeenCount { get; set; }
+        public bool AlreadyConfigured { get; set; }
+    }
+}

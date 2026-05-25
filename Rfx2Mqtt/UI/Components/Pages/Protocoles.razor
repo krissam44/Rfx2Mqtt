@@ -1,0 +1,166 @@
+@page "/protocoles"
+@inject ConfigFileService Config
+@inject ISnackbar Snackbar
+
+<PageTitle>Protocoles — Rfx2Mqtt</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-2" Style="color: #66bb6a; font-weight: 300;">
+    <MudIcon Icon="@Icons.Material.Filled.Tune" Class="mr-2" />
+    Protocoles RF
+</MudText>
+<MudText Typo="Typo.body2" Style="color: #546e7a;" Class="mb-6">
+    Activez uniquement les protocoles dont vous avez besoin. Chaque protocole activé augmente la charge RF reçue.
+</MudText>
+
+<MudGrid>
+    @foreach (var group in _groups)
+    {
+        <MudItem xs="12" sm="6" md="4">
+            <MudPaper Class="pa-4" Elevation="3">
+                <MudText Typo="Typo.subtitle2" Style="color: #90a4ae; margin-bottom: 12px;">
+                    @group.Label
+                </MudText>
+                @foreach (var proto in group.Protocols)
+                {
+                    <MudSwitch @bind-Value="proto.Enabled"
+                               Label="@proto.Name"
+                               Color="Color.Primary" />
+                    @if (!string.IsNullOrEmpty(proto.Hint))
+                    {
+                        <MudText Typo="Typo.caption" Style="color: #546e7a; margin-left: 44px; margin-bottom: 4px;">
+                            @proto.Hint
+                        </MudText>
+                    }
+                }
+            </MudPaper>
+        </MudItem>
+    }
+</MudGrid>
+
+<div style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="Load">
+        Annuler
+    </MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Save"
+               OnClick="Save">
+        Sauvegarder
+    </MudButton>
+</div>
+
+<MudAlert Severity="Severity.Info" Class="mt-4" Dense="true">
+    Les modifications seront prises en compte au prochain redémarrage du service.
+</MudAlert>
+
+@code {
+    private RfxComProtocols _protocols = new();
+
+    // Groupes visuels pour organiser les checkboxes
+    private List<ProtoGroup> _groups = [];
+
+    protected override void OnInitialized() => Load();
+
+    private void Load()
+    {
+        _protocols = Config.LoadRfxComOptions().Protocols;
+        BuildGroups();
+    }
+
+    private void BuildGroups()
+    {
+        _groups =
+        [
+            new("Météo / Sondes",
+            [
+                new("Oregon Scientific", _protocols.OregonScientific,
+                    v => _protocols.OregonScientific = v, "THGN, THGR, BTHR…"),
+                new("Fine Offset / Viking", _protocols.FineOffsetViking,
+                    v => _protocols.FineOffsetViking = v, "Viking 02035, Fine Offset"),
+                new("Rubicson", _protocols.Rubicson,
+                    v => _protocols.Rubicson = v),
+                new("La Crosse", _protocols.LaCrosse,
+                    v => _protocols.LaCrosse = v),
+                new("Hideki", _protocols.Hideki,
+                    v => _protocols.Hideki = v),
+            ]),
+            new("Éclairage / Prises",
+            [
+                new("X10", _protocols.X10,
+                    v => _protocols.X10 = v, "X10 Security Motion (avec Lighting4)"),
+                new("Lighting4", _protocols.Lighting4,
+                    v => _protocols.Lighting4 = v, "Requis avec X10 pour les détecteurs de mouvement"),
+                new("AC (Chacon/DIO)", _protocols.AC,
+                    v => _protocols.AC = v, "Prises et interrupteurs Chacon"),
+                new("HomeEasy EU", _protocols.HomeEasyEU,
+                    v => _protocols.HomeEasyEU = v),
+                new("ARC", _protocols.ARC,
+                    v => _protocols.ARC = v),
+                new("RSL", _protocols.RSL,
+                    v => _protocols.RSL = v),
+            ]),
+            new("Volets / Stores",
+            [
+                new("Blinds T1-T4", _protocols.BlindsT1T2T3T4,
+                    v => _protocols.BlindsT1T2T3T4 = v, "BFT, Somfy, Nice, Velux"),
+            ]),
+            new("Sécurité / Alarme",
+            [
+                new("Visonic", _protocols.Visonic,
+                    v => _protocols.Visonic = v),
+                new("Meiantech", _protocols.Meiantech,
+                    v => _protocols.Meiantech = v),
+                new("Byron SX", _protocols.ByronSX,
+                    v => _protocols.ByronSX = v, "Sonnettes"),
+                new("AE Blyss", _protocols.AEBlyss,
+                    v => _protocols.AEBlyss = v),
+            ]),
+            new("Divers",
+            [
+                new("ATI", _protocols.ATI,
+                    v => _protocols.ATI = v),
+                new("Mertik", _protocols.Mertik,
+                    v => _protocols.Mertik = v, "Poêles à bois"),
+                new("LightwaveRF", _protocols.LightwaveRF,
+                    v => _protocols.LightwaveRF = v),
+                new("FS20", _protocols.FS20,
+                    v => _protocols.FS20 = v),
+                new("Non décodé", _protocols.Undecoded,
+                    v => _protocols.Undecoded = v, "Affiche les trames inconnues (debug)"),
+            ]),
+        ];
+    }
+
+    private void Save()
+    {
+        try
+        {
+            // Appliquer les valeurs des toggles vers _protocols
+            foreach (var group in _groups)
+                foreach (var proto in group.Protocols)
+                    proto.ApplyTo();
+
+            var rfx = Config.LoadRfxComOptions();
+            rfx.Protocols = _protocols;
+            Config.SaveRfxComOptions(rfx);
+            Snackbar.Add("Protocoles sauvegardés", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erreur : {ex.Message}", Severity.Error);
+        }
+    }
+
+    // ── Modèles internes ─────────────────────────────────────────────────────
+
+    private record ProtoGroup(string Label, List<ProtoItem> Protocols);
+
+    private class ProtoItem(string name, bool initial, Action<bool> setter, string hint = "")
+    {
+        public string Name { get; } = name;
+        public string Hint { get; } = hint;
+        public bool Enabled { get; set; } = initial;
+        private readonly Action<bool> _setter = setter;
+        public void ApplyTo() => _setter(Enabled);
+    }
+}

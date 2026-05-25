@@ -1,0 +1,49 @@
+# ─── .NET build artifacts ────────────────────────────────────────────────────
+bin/
+obj/
+publish/
+*.user
+*.suo
+*.userprefs
+*.cache
+*.log
+*.pdb
+
+# ─── Visual Studio / Rider / IDE ─────────────────────────────────────────────
+.vs/
+.idea/
+.vscode/launch.json
+*.vsidx
+*.lock.json
+*.dotsettings.user
+
+# ─── Runtime / local state — NOT to be committed ─────────────────────────────
+# appsettings.json contains broker IP, credentials — keep a sample, ignore local
+# Real appsettings.json contains credentials — always ignored
+Rfx2Mqtt/appsettings.json
+Rfx2Mqtt/appsettings.json.bak
+Rfx2Mqtt/data/devices.yaml
+Rfx2Mqtt/data/*.yaml.tmp
+
+# Local config folder (contains real broker IP / credentials)
+config/
+
+# Claude Code personal guidance — not useful for contributors
+CLAUDE.md
+
+# Released self-contained outputs
+release/
+artifacts/
+
+# ─── OS junk ─────────────────────────────────────────────────────────────────
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# ─── NuGet ───────────────────────────────────────────────────────────────────
+*.nupkg
+packages/
+
+# ─── Misc ────────────────────────────────────────────────────────────────────
+*.swp
+*~

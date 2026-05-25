@@ -1,0 +1,110 @@
+@page "/connexion"
+@inject ConfigFileService Config
+@inject ISnackbar Snackbar
+
+<PageTitle>Connexion — Rfx2Mqtt</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-6" Style="color: #66bb6a; font-weight: 300;">
+    <MudIcon Icon="@Icons.Material.Filled.SettingsInputComposite" Class="mr-2" />
+    Connexion
+</MudText>
+
+<MudGrid>
+    <!-- Section Port série -->
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4" Elevation="3">
+            <MudText Typo="Typo.h6" Class="mb-4" Style="color: #90a4ae;">
+                <MudIcon Icon="@Icons.Material.Filled.Usb" Class="mr-1" Style="font-size: 1.2rem;" />
+                Port série RFXCom
+            </MudText>
+            <MudTextField @bind-Value="_rfx.PortName" Label="Port (ex: /dev/ttyUSB0 ou COM3)"
+                          Variant="Variant.Outlined" Class="mb-3" />
+            <MudNumericField @bind-Value="_rfx.BaudRate" Label="Baud rate"
+                             Variant="Variant.Outlined" Class="mb-3"
+                             ReadOnly="true" HelperText="Toujours 38400 pour RFXCom" />
+            <MudNumericField @bind-Value="_rfx.ResetDelayMs" Label="Délai reset (ms)"
+                             Variant="Variant.Outlined" Class="mb-3" Min="1000" Max="5000" />
+            <MudNumericField @bind-Value="_rfx.ReadTimeoutMs" Label="Timeout lecture (ms)"
+                             Variant="Variant.Outlined" Class="mb-3" Min="1000" Max="30000" />
+            <MudNumericField @bind-Value="_rfx.ReconnectDelaySec" Label="Délai reconnexion série (s)"
+                             Variant="Variant.Outlined" Class="mb-3" Min="5" Max="60" />
+            <MudDivider Class="mb-3" />
+            <MudNumericField @bind-Value="_rfx.MotionClearDelaySec" Label="Auto-reset mouvement (s, 0=désactivé)"
+                             Variant="Variant.Outlined" Class="mb-3" Min="0" Max="3600"
+                             HelperText="Délai avant de passer occupancy à false" />
+            <MudSwitch @bind-Value="_rfx.SkipSetMode" Label="Ne pas modifier les protocoles au démarrage"
+                       Color="Color.Primary" Class="mb-2" />
+        </MudPaper>
+    </MudItem>
+
+    <!-- Section MQTT -->
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4" Elevation="3">
+            <MudText Typo="Typo.h6" Class="mb-4" Style="color: #90a4ae;">
+                <MudIcon Icon="@Icons.Material.Filled.Cloud" Class="mr-1" Style="font-size: 1.2rem;" />
+                Broker MQTT
+            </MudText>
+            <MudTextField @bind-Value="_mqtt.Host" Label="Hôte ou IP"
+                          Variant="Variant.Outlined" Class="mb-3"
+                          HelperText="Utiliser l'IP plutôt qu'un nom DNS (plus fiable)" />
+            <MudNumericField @bind-Value="_mqtt.Port" Label="Port"
+                             Variant="Variant.Outlined" Class="mb-3" Min="1" Max="65535" />
+            <MudTextField @bind-Value="_mqtt.ClientId" Label="Client ID"
+                          Variant="Variant.Outlined" Class="mb-3" />
+            <MudTextField @bind-Value="_mqtt.TopicPrefix" Label="Préfixe des topics"
+                          Variant="Variant.Outlined" Class="mb-3"
+                          HelperText="Ex: rfxcom → topics rfxcom/sensor/…" />
+            <MudTextField @bind-Value="_mqtt.Username" Label="Utilisateur (optionnel)"
+                          Variant="Variant.Outlined" Class="mb-3" />
+            <MudTextField @bind-Value="_mqtt.Password" Label="Mot de passe (optionnel)"
+                          Variant="Variant.Outlined" Class="mb-3"
+                          InputType="InputType.Password" />
+            <MudNumericField @bind-Value="_mqtt.ReconnectDelaySec" Label="Délai reconnexion MQTT (s)"
+                             Variant="Variant.Outlined" Min="5" Max="60" />
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<!-- Bouton Sauvegarder -->
+<div style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="Load">
+        Annuler
+    </MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Save"
+               OnClick="Save">
+        Sauvegarder
+    </MudButton>
+</div>
+
+<MudAlert Severity="Severity.Info" Class="mt-4" Dense="true">
+    Les modifications seront prises en compte au prochain redémarrage du service.
+</MudAlert>
+
+@code {
+    private RfxComOptions _rfx = new();
+    private MqttOptions _mqtt = new();
+
+    protected override void OnInitialized() => Load();
+
+    private void Load()
+    {
+        _rfx = Config.LoadRfxComOptions();
+        _mqtt = Config.LoadMqttOptions();
+    }
+
+    private void Save()
+    {
+        try
+        {
+            Config.SaveRfxComOptions(_rfx);
+            Config.SaveMqttOptions(_mqtt);
+            Snackbar.Add("Configuration sauvegardée", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erreur : {ex.Message}", Severity.Error);
+        }
+    }
+}

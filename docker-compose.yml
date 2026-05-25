@@ -1,0 +1,67 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# EN: docker-compose example for Rfx2Mqtt.
+#     1. Place your appsettings.json in ./config/
+#     2. Adjust the broker section + serial device below
+#     3. docker compose up -d
+#     4. docker compose logs -f
+#
+# FR: Exemple docker-compose pour Rfx2Mqtt.
+#     1. Placer votre appsettings.json dans ./config/
+#     2. Ajuster la section broker + le périphérique série ci-dessous
+#     3. docker compose up -d
+#     4. docker compose logs -f
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  rfx2mqtt:
+    # EN: Build locally (default) — or use a published image.
+    # FR: Build local (par défaut) — ou utiliser une image publiée.
+    build: .
+    # image: ghcr.io/krissam44/rfx2mqtt:latest
+
+    container_name: rfx2mqtt
+    restart: unless-stopped
+
+    # EN: Map the RFXCom USB serial device into the container. On most Linux hosts
+    #     it lives at /dev/ttyUSB0. Use `ls /dev/serial/by-id/` to pick a stable name
+    #     that survives reboots if you have multiple USB devices.
+    # FR: Mapper le périphérique série USB du RFXCom dans le conteneur. Sur la plupart
+    #     des hôtes Linux il est sur /dev/ttyUSB0. Utiliser `ls /dev/serial/by-id/`
+    #     pour un nom stable si vous avez plusieurs périphériques USB.
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+
+    # EN: Persistent config + inventory.
+    #     - ./config/appsettings.json → mounted read-only at /app/appsettings.json
+    #     - ./data/                   → contains devices.yaml (writable from the UI)
+    # FR: Config + inventaire persistants.
+    #     - ./config/appsettings.json → monté lecture seule sur /app/appsettings.json
+    #     - ./data/                   → contient devices.yaml (modifiable depuis l'UI)
+    volumes:
+      - ./config/appsettings.json:/app/appsettings.json:ro
+      - ./data:/app/data
+
+    environment:
+      - TZ=Europe/Paris
+      - DOTNET_ENVIRONMENT=Production
+      # EN: .NET config override syntax: section__key (double underscore).
+      # FR: Syntaxe de surcharge config .NET : section__clé (double underscore).
+      # - RfxCom__PortName=/dev/ttyUSB0
+      # - Mqtt__Host=192.168.1.100
+      # - Mqtt__Port=1883
+      # - Mqtt__Username=user
+      # - Mqtt__Password=pass
+
+    # EN: host networking is simplest if your MQTT broker runs on the same host.
+    #     Comment out and use `ports:` instead if you prefer a private Docker network.
+    # FR: réseau host = le plus simple si le broker MQTT tourne sur la même machine.
+    #     Commenter et utiliser `ports:` pour un réseau Docker dédié.
+    network_mode: host
+    # ports:
+    #   - "5080:5080"
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

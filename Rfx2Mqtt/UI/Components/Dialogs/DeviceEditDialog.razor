@@ -1,0 +1,92 @@
+@typeparam TDevice where TDevice : class
+@inject IDialogService DialogService
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_name" Label="Nom" Variant="Variant.Outlined" Class="mb-3"
+                      HelperText="Utilisé dans le topic MQTT (ex: sonde_salon)" />
+        <MudTextField @bind-Value="_id" Label="@_idLabel"
+                      Variant="Variant.Outlined" Class="mb-3"
+                      HelperText="@_idHint"
+                      Placeholder="@_idPlaceholder" />
+        @if (!_isOregon)
+        {
+            <MudNumericField T="byte" @bind-Value="_unitCode" Label="Unit Code"
+                             Variant="Variant.Outlined" Class="mb-3" Min="0" Max="16" />
+            <MudNumericField T="byte" @bind-Value="_subType" Label="SubType"
+                             Variant="Variant.Outlined" Min="0" Max="10"
+                             HelperText="0 = standard (Somfy RFY / Chacon AC)" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Annuler</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   OnClick="Confirm" Disabled="@(!IsValid)">
+            Valider
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public TDevice Device { get; set; } = null!;
+
+    private string _name = "";
+    private string _id = "";
+    private byte _unitCode = 1;
+    private byte _subType = 0;
+
+    private bool _isOregon;
+    private string _idLabel = "ID (octets hex séparés par des espaces)";
+    private string _idHint = "";
+    private string _idPlaceholder = "";
+
+    protected override void OnInitialized()
+    {
+        _isOregon = Device is OregonDevice;
+
+        (_idLabel, _idHint, _idPlaceholder) = Device switch
+        {
+            SomfyDevice  => ("ID (3 octets hex)", "ex: 01 02 03", "01 02 03"),
+            OregonDevice => ("ID de la sonde", "ex: 0x1A2B — tel qu'affiché dans la page Statut", "0x1A2B"),
+            _            => ("ID (4 octets hex)", "ex: 01 9E 75 0E", "01 9E 75 0E")
+        };
+
+        if (Device is SomfyDevice s)
+        {
+            _name = s.Name; _id = s.Id; _unitCode = s.UnitCode; _subType = s.SubType;
+        }
+        else if (Device is ChaconDevice c)
+        {
+            _name = c.Name; _id = c.Id; _unitCode = c.UnitCode; _subType = c.SubType;
+        }
+        else if (Device is OregonDevice o)
+        {
+            _name = o.Name; _id = o.Id;
+        }
+    }
+
+    private bool IsValid =>
+        !string.IsNullOrWhiteSpace(_name) &&
+        !string.IsNullOrWhiteSpace(_id);
+
+    private void Confirm()
+    {
+        if (Device is SomfyDevice s)
+        {
+            s.Name = _name.Trim(); s.Id = _id.Trim(); s.UnitCode = _unitCode; s.SubType = _subType;
+        }
+        else if (Device is ChaconDevice c)
+        {
+            c.Name = _name.Trim(); c.Id = _id.Trim(); c.UnitCode = _unitCode; c.SubType = _subType;
+        }
+        else if (Device is OregonDevice o)
+        {
+            o.Name = _name.Trim(); o.Id = _id.Trim();
+        }
+        MudDialog.Close(DialogResult.Ok(Device));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

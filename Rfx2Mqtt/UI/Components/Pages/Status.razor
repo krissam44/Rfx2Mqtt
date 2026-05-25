@@ -1,0 +1,109 @@
+@page "/"
+@inject UiEventService Events
+@inject MqttService Mqtt
+@inject RfxComSerialService Serial
+@implements IDisposable
+
+<PageTitle>Statut — Rfx2Mqtt</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4" Style="color: #66bb6a; font-weight: 300;">
+    <MudIcon Icon="@Icons.Material.Filled.Dashboard" Class="mr-2" />
+    Statut du bridge
+</MudText>
+
+<!-- Indicateurs de connexion -->
+<MudGrid Class="mb-6">
+    <MudItem xs="12" sm="6">
+        <MudPaper Class="pa-4" Elevation="3">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <MudIcon Icon="@Icons.Material.Filled.Usb"
+                         Style="@($"color: {(Serial.IsConnected ? "#66bb6a" : "#ef5350")}; font-size: 2rem;")" />
+                <div>
+                    <MudText Typo="Typo.body2" Style="color: #90a4ae;">Port série</MudText>
+                    <MudText Typo="Typo.body1" Style="@($"font-weight: 600; color: {(Serial.IsConnected ? "#66bb6a" : "#ef5350")}")">
+                        @(Serial.IsConnected ? "Connecté" : "Déconnecté")
+                    </MudText>
+                </div>
+            </div>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="6">
+        <MudPaper Class="pa-4" Elevation="3">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <MudIcon Icon="@Icons.Material.Filled.Cloud"
+                         Style="@($"color: {(Mqtt.IsConnected ? "#66bb6a" : "#ef5350")}; font-size: 2rem;")" />
+                <div>
+                    <MudText Typo="Typo.body2" Style="color: #90a4ae;">Broker MQTT</MudText>
+                    <MudText Typo="Typo.body1" Style="@($"font-weight: 600; color: {(Mqtt.IsConnected ? "#66bb6a" : "#ef5350")}")">
+                        @(Mqtt.IsConnected ? "Connecté" : "Déconnecté")
+                    </MudText>
+                </div>
+            </div>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<!-- Trames reçues -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+    <MudText Typo="Typo.h6" Style="color: #90a4ae; font-weight: 400;">
+        Trames reçues (50 dernières)
+    </MudText>
+    <MudButton Variant="Variant.Outlined" Size="Size.Small"
+               StartIcon="@Icons.Material.Filled.DeleteSweep"
+               OnClick="@(() => _pinned = Events.GetRecent().Count)">
+        Effacer
+    </MudButton>
+</div>
+
+<MudPaper Elevation="3" Style="max-height: 480px; overflow-y: auto;">
+    <MudTable Items="_snapshot" Dense="true" Hover="true" Striped="true" Elevation="0">
+        <HeaderContent>
+            <MudTh Style="width: 90px;">Heure</MudTh>
+            <MudTh Style="width: 120px;">Type</MudTh>
+            <MudTh Style="width: 130px;">ID</MudTh>
+            <MudTh>Résumé</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd Style="color: #546e7a; font-size: 0.8rem;">@context.ReceivedAt.ToString("HH:mm:ss")</MudTd>
+            <MudTd><MudChip T="string" Size="Size.Small" Style="background:#263238; color:#90a4ae; font-size:0.75rem;">@context.PacketType</MudChip></MudTd>
+            <MudTd Style="font-family: monospace; font-size: 0.85rem;">@context.DeviceId</MudTd>
+            <MudTd Style="font-size: 0.85rem;">@context.Summary</MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Style="color: #546e7a; padding: 16px;">En attente de trames RFXCom...</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    private IReadOnlyList<RfxEvent> _snapshot = [];
+    private int _pinned;   // index dans le ring buffer à partir duquel on ignore (bouton Effacer)
+    private Timer? _timer;
+    private bool _disposed;
+
+    protected override void OnInitialized()
+    {
+        // Polling toutes les 2s — pas de souscription événement
+        _timer = new Timer(_ =>
+        {
+            if (_disposed) return;
+            InvokeAsync(() =>
+            {
+                RefreshSnapshot();
+                StateHasChanged();
+            });
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(2));
+    }
+
+    private void RefreshSnapshot()
+    {
+        var all = Events.GetRecent();
+        _snapshot = all.Skip(_pinned).Take(50).ToArray();
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        _timer?.Dispose();
+    }
+}
