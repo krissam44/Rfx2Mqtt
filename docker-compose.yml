@@ -38,8 +38,15 @@ services:
     #     - ./config/appsettings.json → monté lecture seule sur /app/appsettings.json
     #     - ./data/                   → contient devices.yaml (modifiable depuis l'UI)
     volumes:
-      - ./config/appsettings.json:/app/appsettings.json:ro
+      # EN: appsettings.json must be writable — UI pages (Connexion, Protocoles) persist
+      #     changes here, and PermitJoin state is saved here at runtime.
+      # FR: appsettings.json doit être en écriture — les pages UI (Connexion, Protocoles)
+      #     y persistent les changements, et l'état PermitJoin y est sauvé au runtime.
+      - ./config/appsettings.json:/app/appsettings.json
       - ./data:/app/data
+      # EN: DataProtection keys — keeps cookies/antiforgery valid across container restarts.
+      # FR: Clés DataProtection — préserve cookies/antiforgery au travers des redémarrages.
+      - ./data/keys:/root/.aspnet/DataProtection-Keys
 
     environment:
       - TZ=Europe/Paris

@@ -70,7 +70,7 @@ docker compose logs -f
 Ouvrir `http://<hôte>:5080` pour l'UI web.
 
 Le `docker-compose.yml` monte :
-- `config/appsettings.json` → `/app/appsettings.json` (lecture seule côté hôte)
+- `config/appsettings.json` → `/app/appsettings.json` (écriture — l'UI peut sauvegarder les réglages)
 - `data/` → `/app/data` (inventaire des appareils, en écriture)
 
 ### Option 2 — Build portable

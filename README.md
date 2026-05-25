@@ -68,7 +68,7 @@ docker compose logs -f
 Open `http://<host>:5080` for the web UI.
 
 The `docker-compose.yml` mounts:
-- `config/appsettings.json` → `/app/appsettings.json` (read-only on the host side)
+- `config/appsettings.json` → `/app/appsettings.json` (writable — UI can persist settings)
 - `data/` → `/app/data` (device inventory, writable)
 
 ### Option 2 — Portable build
