@@ -15,7 +15,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── EN/FR: Build stage / Étape de build ─────────────────────────────────────
-FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # EN: Copy only the csproj first to leverage Docker layer caching for restore.
@@ -33,7 +33,7 @@ RUN dotnet publish Rfx2Mqtt/Rfx2Mqtt.csproj \
     /p:UseAppHost=false
 
 # ── EN/FR: Runtime stage / Étape runtime ────────────────────────────────────
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 LABEL maintainer="Christian Sammut"
