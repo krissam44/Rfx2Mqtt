@@ -60,13 +60,17 @@
         <HeaderContent>
             <MudTh Style="width: 90px;">Heure</MudTh>
             <MudTh Style="width: 120px;">Type</MudTh>
-            <MudTh Style="width: 130px;">ID</MudTh>
+            <MudTh Style="width: 120px;">ID</MudTh>
+            <MudTh Style="width: 150px;">Nom</MudTh>
             <MudTh>Résumé</MudTh>
         </HeaderContent>
         <RowTemplate>
-            <MudTd Style="color: #546e7a; font-size: 0.8rem;">@context.ReceivedAt.ToString("HH:mm:ss")</MudTd>
+            <MudTd Style="color: #546e7a; font-size: 0.8rem;">@context.ReceivedAt.ToLocalTime().ToString("HH:mm:ss")</MudTd>
             <MudTd><MudChip T="string" Size="Size.Small" Style="background:#263238; color:#90a4ae; font-size:0.75rem;">@context.PacketType</MudChip></MudTd>
             <MudTd Style="font-family: monospace; font-size: 0.85rem;">@context.DeviceId</MudTd>
+            <MudTd Style="@($"font-size: 0.85rem; color: {(context.DeviceName != null ? "#80cbc4" : "#455a64")};")">
+                @(context.DeviceName ?? "—")
+            </MudTd>
             <MudTd Style="font-size: 0.85rem;">@context.Summary</MudTd>
         </RowTemplate>
         <NoRecordsContent>

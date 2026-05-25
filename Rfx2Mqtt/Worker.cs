@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using Rfx2Mqtt.Configuration;
 using Rfx2Mqtt.Devices.Handlers;
+using Rfx2Mqtt.Devices.Models;
 using Rfx2Mqtt.Discovery;
 using Rfx2Mqtt.Mqtt;
 using Rfx2Mqtt.Serial;
@@ -45,6 +46,7 @@ public class Worker : BackgroundService
     private readonly HomeAssistantDiscoveryService _discovery;
     private readonly AvailabilityService _availability;
     private readonly UiEventService _uiEvents;
+    private readonly IDeviceRepository _deviceRepository;
     private readonly IHostApplicationLifetime _lifetime;
     private CancellationToken _stoppingToken;
 
@@ -61,6 +63,7 @@ public class Worker : BackgroundService
         HomeAssistantDiscoveryService discovery,
         AvailabilityService availability,
         UiEventService uiEvents,
+        IDeviceRepository deviceRepository,
         IHostApplicationLifetime lifetime)
     {
         _logger = logger;
@@ -75,6 +78,7 @@ public class Worker : BackgroundService
         _discovery = discovery;
         _availability = availability;
         _uiEvents = uiEvents;
+        _deviceRepository = deviceRepository;
         _lifetime = lifetime;
     }
 
@@ -215,31 +219,32 @@ public class Worker : BackgroundService
 
     /// <summary>
     /// Construit un RfxEvent lisible pour l'UI à partir d'un paquet brut.
+    /// Résout également le nom amical configuré depuis <see cref="IDeviceRepository"/>.
     /// </summary>
-    private static RfxEvent BuildUiEvent(Devices.Models.RfxComPacket packet)
+    private RfxEvent BuildUiEvent(RfxComPacket packet)
     {
         var d = packet.Data;
         var (packetTypeName, deviceId, summary) = packet.PacketType switch
         {
-            Devices.Models.PacketTypes.TempHumidity or Devices.Models.PacketTypes.TempHumBaro
+            PacketTypes.TempHumidity or PacketTypes.TempHumBaro
                 when d.Length >= 7 =>
                 ("TH/THB",
                  $"0x{d[0]:X2}{d[1]:X2}",
                  $"{((d[2] & 0x7F) * 256 + d[3]) / 10.0:F1}°C {d[4]}%"),
 
-            Devices.Models.PacketTypes.Security1
+            PacketTypes.Security1
                 when d.Length >= 5 =>
                 ("Security",
                  $"0x{d[0]:X2}{d[1]:X2}{d[2]:X2}",
                  $"status=0x{(d[3] & 0x7F):X2}"),
 
-            Devices.Models.PacketTypes.Lighting2
+            PacketTypes.Lighting2
                 when d.Length >= 6 =>
                 ("Chacon",
                  $"0x{d[0]:X2}{d[1]:X2}{d[2]:X2}{d[3]:X2}",
                  $"unit={d[4]} cmd={d[5]}"),
 
-            Devices.Models.PacketTypes.Rfy
+            PacketTypes.Rfy
                 when d.Length >= 5 =>
                 ("Somfy",
                  $"0x{d[0]:X2}{d[1]:X2}{d[2]:X2}",
@@ -248,7 +253,36 @@ public class Worker : BackgroundService
             _ => ($"0x{packet.PacketType:X2}", "—", $"{d.Length} octets")
         };
 
-        return new RfxEvent(packet.ReceivedAt, packetTypeName, deviceId, summary);
+        // Résolution du nom amical depuis l'inventaire des appareils
+        var devices = _deviceRepository.Snapshot;
+        string? deviceName = packet.PacketType switch
+        {
+            PacketTypes.TempHumidity or PacketTypes.TempHumBaro when d.Length >= 2 =>
+                devices.Oregon.FirstOrDefault(o =>
+                    string.Equals(o.Id, deviceId, StringComparison.OrdinalIgnoreCase))?.Name,
+
+            PacketTypes.Security1 when d.Length >= 3 =>
+                devices.Security.FirstOrDefault(s =>
+                    string.Equals(s.Id, deviceId, StringComparison.OrdinalIgnoreCase))?.Name,
+
+            PacketTypes.Rfy when d.Length >= 3 =>
+                devices.Somfy.FirstOrDefault(s =>
+                {
+                    try { var b = s.GetIdBytes(); return b[0] == d[0] && b[1] == d[1] && b[2] == d[2]; }
+                    catch { return false; }
+                })?.Name,
+
+            PacketTypes.Lighting2 when d.Length >= 4 =>
+                devices.Chacon.FirstOrDefault(c =>
+                {
+                    try { var b = c.GetIdBytes(); return b[0] == d[0] && b[1] == d[1] && b[2] == d[2] && b[3] == d[3]; }
+                    catch { return false; }
+                })?.Name,
+
+            _ => null
+        };
+
+        return new RfxEvent(packet.ReceivedAt, packetTypeName, deviceId, deviceName, summary);
     }
 
     /// <summary>

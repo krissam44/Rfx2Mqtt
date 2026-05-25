@@ -40,10 +40,13 @@ public class UiEventService
 /// <param name="ReceivedAt"><b>EN/FR:</b> UTC timestamp. / Horodatage UTC.</param>
 /// <param name="PacketType"><b>EN:</b> Friendly packet type label. <b>FR:</b> Libellé lisible du type de paquet.</param>
 /// <param name="DeviceId"><b>EN:</b> Device ID as printed in the topic. <b>FR:</b> ID de l'appareil tel qu'il apparaît dans le topic.</param>
+/// <param name="DeviceName"><b>EN:</b> Configured friendly name, or <c>null</c> if the device is not yet configured.
+/// <b>FR:</b> Nom amical configuré, ou <c>null</c> si l'appareil n'est pas encore configuré.</param>
 /// <param name="Summary"><b>EN:</b> One-line debug summary. <b>FR:</b> Résumé debug sur une ligne.</param>
 public record RfxEvent(
     DateTime ReceivedAt,
     string PacketType,
     string DeviceId,
+    string? DeviceName,
     string Summary
 );
