@@ -255,7 +255,7 @@ dotnet watch --project Rfx2Mqtt/Rfx2Mqtt.csproj
 
 ## Licence
 
-[MIT](LICENSE) — © 2026 Christian Samain.
+[MIT](LICENSE) — © 2026 Christian Sammut.
 
 ## Remerciements
 
