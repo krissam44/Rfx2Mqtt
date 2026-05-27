@@ -202,9 +202,18 @@ public class MqttService : IDisposable
             // Désactive le handler de reconnexion avant la déconnexion volontaire
             _mqttClient.DisconnectedAsync -= HandleDisconnectedAsync;
 
-            // Publier status offline avant déconnexion propre
-            await PublishAsync(_topics.BridgeAvailability, MqttTopics.PayloadOffline, retain: true);
-            await _mqttClient.DisconnectAsync(new MqttClientDisconnectOptions());
+            try
+            {
+                // Publier status offline avant déconnexion propre.
+                // Guard against ObjectDisposedException if the host is already tearing down.
+                await PublishAsync(_topics.BridgeAvailability, MqttTopics.PayloadOffline, retain: true);
+                await _mqttClient.DisconnectAsync(new MqttClientDisconnectOptions());
+            }
+            catch (ObjectDisposedException) { /* client déjà disposé lors de l'arrêt — ignoré */ }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Erreur lors de la déconnexion MQTT propre");
+            }
         }
     }
 
