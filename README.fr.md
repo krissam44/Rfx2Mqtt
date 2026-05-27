@@ -202,6 +202,138 @@ chacon:
 | `rfxcom/command/restart` | Redémarrer le service |
 | `rfxcom/command/permit_join` | Basculer le mode découverte (`true` / `false`) — persisté dans appsettings.json |
 
+## Intégration
+
+Rfx2Mqtt expose une interface MQTT stable, conçue pour être consommée par des plateformes
+domotiques, des flows Node-RED ou tout bridge de protocole (ex : un bridge Matter, un plugin
+GladysAssistant).
+
+### Nom d'appareil → nom dans le topic
+
+Le segment `{nom}` dans tous les topics correspond **verbatim** au champ `name` du fichier
+`data/devices.yaml`. Les espaces et les accents sont conservés tels quels.
+
+```yaml
+oregon:
+  - name: Salon          # → rfxcom/sensor/th/Salon
+  - name: Chambre enfant # → rfxcom/sensor/th/Chambre enfant
+```
+
+> **Conseil pour un bridge** : utiliser le nom original pour les souscriptions MQTT ; ne le
+> transformer en slug (`Chambre enfant` → `chambre-enfant`) que lors de l'enregistrement côté
+> système cible.
+
+### Payloads JSON complets
+
+#### Sonde T°/Humidité — `rfxcom/sensor/th/{nom}` (retained)
+
+```json
+{
+  "sensorType": "0x02",
+  "sensorId": "0x710E",
+  "sensorModel": "Oregon THGR810/THGN800",
+  "temperature": 21.4,
+  "humidity": 56,
+  "humidityStatus": 1,
+  "barometer": null,
+  "batteryLevel": 9,
+  "signalLevel": 7,
+  "channel": 1,
+  "receivedAt": "2026-05-28T14:23:11.456Z"
+}
+```
+
+| Champ | Type | Notes |
+|---|---|---|
+| `temperature` | `number` | °C |
+| `humidity` | `integer` | 0–100 % |
+| `humidityStatus` | `integer` | 0=Normal, 1=Confort, 2=Sec, 3=Humide |
+| `barometer` | `number\|null` | hPa — uniquement pour les sondes THBaro (BTHR918/968), sinon `null` |
+| `batteryLevel` | `integer` | 0–9 (0 = faible/vide, 9 = pleine) |
+| `signalLevel` | `integer` | 0–15 |
+| `channel` | `integer` | 1–3 (certains modèles Oregon) |
+
+Publié également en topics plats individuels : `…/temperature`, `…/humidity`, `…/battery` (`"ok"` ou `"low"`), `…/barometer` (THBaro uniquement).
+
+#### Détecteur de mouvement / Sécurité — `rfxcom/sensor/security/{nom}` (retained)
+
+```json
+{
+  "sensorType": "0x01",
+  "sensorModel": "X10 Security Motion",
+  "sensorId": "0x831480",
+  "status": "motion",
+  "motion": true,
+  "tamper": false,
+  "batteryLevel": 9,
+  "signalLevel": 6,
+  "battery": 100,
+  "linkquality": 102,
+  "occupancy": true,
+  "receivedAt": "2026-05-28T14:23:11.456Z"
+}
+```
+
+| Champ | Type | Notes |
+|---|---|---|
+| `motion` / `occupancy` | `boolean` | Même valeur — `occupancy` est l'alias Zigbee2MQTT |
+| `status` | `string` | `motion`, `no_motion`, `alarm`, `alarm_delayed`, `normal`, `tamper`, `panic`… |
+| `tamper` | `boolean` | Capteur ouvert ou arraché |
+| `battery` | `integer` | 0–100 % (normalisé depuis `batteryLevel` 0–9) |
+| `linkquality` | `integer` | 0–255 (normalisé depuis `signalLevel` 0–15, nom Zigbee2MQTT) |
+
+> **Auto-reset** : après `MotionClearDelaySec` secondes de silence, `motion` et `occupancy`
+> repassent à `false` automatiquement. Mettre à `0` pour désactiver.
+
+#### Prise / interrupteur Chacon — `rfxcom/sensor/chacon/{nom}` (retained)
+
+```json
+{
+  "sensorType": "0x00",
+  "model": "Chacon/DIO/AC",
+  "deviceId": "0x019E750E",
+  "unitCode": 1,
+  "command": "on",
+  "state": "ON",
+  "level": 15,
+  "levelPercent": 100,
+  "signalLevel": 7,
+  "receivedAt": "2026-05-28T14:23:11.456Z"
+}
+```
+
+| Champ | Type | Notes |
+|---|---|---|
+| `state` | `"ON"\|"OFF"` | État actuel de la prise / interrupteur |
+| `command` | `string` | `on`, `off`, `set_level`, `group_on`, `group_off` |
+| `level` | `integer` | Niveau dimmer 0–15 (0 = éteint) |
+| `levelPercent` | `integer` | 0–100 % |
+
+#### Volet Somfy RTS — `rfxcom/event/somfy/{nom}` (**non retained**)
+
+```json
+{ "command": "up" }
+```
+
+Valeurs : `up`, `down`, `stop`, `program`. Émis lors d'un appui sur télécommande physique, non retained.
+
+Pour envoyer une commande : publier `{ "command": "up" }` sur `rfxcom/command/somfy/{nom}`.
+
+### Mapping Matter (pour les développeurs de bridge)
+
+| Appareil Rfx2Mqtt | Cluster Matter | Attribut clé |
+|---|---|---|
+| Sonde Oregon TH | `TemperatureMeasurement` + `RelativeHumidityMeasurement` | `MeasuredValue` (°C × 100) |
+| Sonde Oregon THBaro | + `PressureMeasurement` | `MeasuredValue` (hPa × 10) |
+| Détecteur X10 Security | `OccupancySensing` | `Occupancy` ← champ `occupancy` |
+| Prise Chacon | `OnOff` | `OnOff` ← `state == "ON"` |
+| Volet Somfy | `WindowCovering` | `UpOrOpen` / `DownOrClose` / `StopMotion` |
+
+Un bridge souscrit à `rfxcom/sensor/#` et `rfxcom/event/#`, lit `data/devices.yaml` pour
+énumérer les appareils connus, et mappe chaque entrée vers un bridged device Matter selon la
+table ci-dessus. Les commandes circulent en sens inverse : Matter → publication sur
+`rfxcom/command/{type}/{nom}`.
+
 ## UI Web
 
 Pages disponibles sur `http://<hôte>:5080` :
@@ -264,3 +396,6 @@ dotnet watch --project Rfx2Mqtt/Rfx2Mqtt.csproj
 - [MudBlazor](https://mudblazor.com/) pour cette superbe librairie de composants Blazor.
 - Le projet [Zigbee2MQTT](https://www.zigbee2mqtt.io/) pour avoir montré ce à quoi ressemble un
   bon découpage config/inventaire.
+- [Pierre-Gilles Leymarie](https://github.com/pierre-gilles-leymarie) de
+  [GladysAssistant](https://gladysassistant.com/) pour l'idée du bridge Matter et son
+  engagement dans la communauté.

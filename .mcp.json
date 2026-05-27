@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "cwm-roslyn-navigator": {
+      "type": "stdio",
+      "command": "cwm-roslyn-navigator",
+      "args": ["Rfx2Mqtt.sln"]
+    }
+  }
+}
