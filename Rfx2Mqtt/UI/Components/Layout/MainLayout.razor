@@ -16,7 +16,7 @@
 		</MudText>
 		<MudSpacer />
 		<MudText Typo="Typo.caption" Style="color: #90a4ae;" Class="mr-2">
-			RFXCom → MQTT Bridge
+			RFXCom → MQTT Bridge · v@(AppInfo.Version)
 		</MudText>
 		<MudTooltip Text="@(_darkMode ? "Passer en mode clair" : "Passer en mode sombre")">
 			<MudIconButton Icon="@(_darkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
@@ -33,6 +33,15 @@
 			</MudText>
 		</MudDrawerHeader>
 		<NavMenu />
+		@* Pied de page : version, date de release, copyright — poussé en bas du drawer (flex) *@
+		<div class="mt-auto pa-4" style="text-align: center; opacity: 0.65;">
+			<MudText Typo="Typo.caption" Style="display: block;">
+				@AppInfo.Name v@(AppInfo.Version) — @AppInfo.ReleaseDate
+			</MudText>
+			<MudText Typo="Typo.caption" Style="display: block;">
+				@AppInfo.Copyright
+			</MudText>
+		</div>
 	</MudDrawer>
 
 	<MudMainContent>

@@ -9,12 +9,14 @@
 //     Lit deux sections de config : "RfxCom" (paramètres techniques) et "Mqtt" (broker).
 //     L'inventaire des appareils est chargé par IDeviceRepository depuis data/devices.yaml.
 // ─────────────────────────────────────────────────────────────────────────────
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using MudBlazor.Services;
 using Rfx2Mqtt;
 using Rfx2Mqtt.Configuration;
 using Rfx2Mqtt.Devices.Handlers;
 using Rfx2Mqtt.Discovery;
+using Rfx2Mqtt.Health;
 using Rfx2Mqtt.Mqtt;
 using Rfx2Mqtt.Serial;
 using Rfx2Mqtt.UI;
@@ -74,6 +76,11 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddMudServices();
 
+// EN: /healthz — MQTT + serial + last-frame age (see BridgeHealthCheck).
+// FR: /healthz — MQTT + série + âge de la dernière trame (voir BridgeHealthCheck).
+builder.Services.AddHealthChecks()
+    .AddCheck<BridgeHealthCheck>("bridge");
+
 // ── EN/FR: Logging ───────────────────────────────────────────────────────────
 builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(LogLevel.Information);
@@ -107,5 +114,30 @@ app.MapStaticAssets();
 
 app.MapRazorComponents<Rfx2Mqtt.UI.Components.App>()
    .AddInteractiveServerRenderMode();
+
+// EN: JSON health endpoint — HTTP 200 (Healthy/Degraded) or 503 (Unhealthy) with details.
+// FR: Endpoint de santé JSON — HTTP 200 (Healthy/Degraded) ou 503 (Unhealthy) avec détails.
+app.MapHealthChecks("/healthz", new HealthCheckOptions
+{
+    ResponseWriter = (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        return context.Response.WriteAsJsonAsync(new
+        {
+            status = report.Status.ToString(),
+            name = AppInfo.Name,
+            version = AppInfo.Version,
+            releaseDate = AppInfo.ReleaseDate,
+            checks = report.Entries.ToDictionary(
+                e => e.Key,
+                e => new
+                {
+                    status = e.Value.Status.ToString(),
+                    description = e.Value.Description,
+                    data = e.Value.Data
+                })
+        });
+    }
+});
 
 app.Run();

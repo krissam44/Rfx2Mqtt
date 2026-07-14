@@ -16,11 +16,20 @@ public class UiEventService
     private readonly ConcurrentQueue<RfxEvent> _events = new();
 
     /// <summary>
+    /// <b>EN:</b> UTC timestamp of the last RF frame received (null until the first one).
+    /// Used by the /healthz endpoint to detect a silent RFXCom.<br/>
+    /// <b>FR:</b> Horodatage UTC de la dernière trame RF reçue (null avant la première).
+    /// Utilisé par l'endpoint /healthz pour détecter un RFXCom muet.
+    /// </summary>
+    public DateTime? LastEventUtc { get; private set; }
+
+    /// <summary>
     /// <b>EN:</b> Adds an event, evicting the oldest entries beyond <see cref="Capacity"/>.<br/>
     /// <b>FR:</b> Ajoute un événement, éjecte les plus anciens au-delà de <see cref="Capacity"/>.
     /// </summary>
     public void Add(RfxEvent evt)
     {
+        LastEventUtc = evt.ReceivedAt;
         _events.Enqueue(evt);
         while (_events.Count > Capacity)
             _events.TryDequeue(out _);

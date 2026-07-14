@@ -49,6 +49,7 @@ public class Worker : BackgroundService
     private readonly UiEventService _uiEvents;
     private readonly IDeviceRepository _deviceRepository;
     private readonly IHostApplicationLifetime _lifetime;
+    private readonly DateTime _startedAtUtc = DateTime.UtcNow;
     private CancellationToken _stoppingToken;
 
     public Worker(
@@ -110,6 +111,10 @@ public class Worker : BackgroundService
                 {
                     _logger.LogInformation("Connexion au broker MQTT...");
                     await _mqttService.ConnectAsync(stoppingToken);
+
+                    // Identité du bridge dès que MQTT est up — le firmware RFXCom sera
+                    // éventuellement inconnu ici ; re-publié après l'init série ci-dessous.
+                    await PublishBridgeInfoAsync(stoppingToken);
                 }
 
                 // 2. Connexion série et initialisation RFXCom
@@ -122,6 +127,9 @@ public class Worker : BackgroundService
                 _logger.LogInformation("Service opérationnel - En écoute des trames RFXCom...");
                 _logger.LogInformation("PermitJoin = {State}",
                     _permitJoin.IsEnabled ? "ACTIVÉ (toutes les sondes)" : "DÉSACTIVÉ (sondes configurées uniquement)");
+
+                // Re-publier l'identité du bridge, cette fois avec le firmware RFXCom connu
+                await PublishBridgeInfoAsync(stoppingToken);
 
                 // Publier l'état PermitJoin sur MQTT
                 await PublishPermitJoinStateAsync(stoppingToken);
@@ -180,6 +188,27 @@ public class Worker : BackgroundService
         => _mqttService.PublishAsync(
             _topics.PermitJoinState,
             $"{{\"state\":\"{(_permitJoin.IsEnabled ? "true" : "false")}\"}}",
+            retain: true,
+            cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// <b>EN:</b> Publishes the bridge identity on <c>{prefix}/info</c> (retained):
+    /// name, version, release date, copyright, RFXCom firmware and start time.<br/>
+    /// <b>FR:</b> Publie l'identité du bridge sur <c>{prefix}/info</c> (retained) :
+    /// nom, version, date de release, copyright, firmware RFXCom et heure de démarrage.
+    /// </summary>
+    private Task PublishBridgeInfoAsync(CancellationToken cancellationToken)
+        => _mqttService.PublishAsync(
+            _topics.BridgeInfo,
+            System.Text.Json.JsonSerializer.Serialize(new
+            {
+                name = AppInfo.Name,
+                version = AppInfo.Version,
+                releaseDate = AppInfo.ReleaseDate,
+                copyright = AppInfo.Copyright,
+                firmware = _serialService.FirmwareVersion,
+                startedAt = _startedAtUtc.ToString("O")
+            }),
             retain: true,
             cancellationToken: cancellationToken);
 

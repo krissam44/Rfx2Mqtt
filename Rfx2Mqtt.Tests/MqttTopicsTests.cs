@@ -15,6 +15,7 @@ public class MqttTopicsTests
         Assert.Equal("rfxcom/availability", _topics.BridgeAvailability);
         Assert.Equal("rfxcom/config/permit_join", _topics.PermitJoinState);
         Assert.Equal("rfxcom/devices", _topics.Devices);
+        Assert.Equal("rfxcom/info", _topics.BridgeInfo);
         Assert.Equal("rfxcom/command/#", _topics.CommandWildcard);
     }
 

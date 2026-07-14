@@ -53,6 +53,14 @@ public class MqttTopics
     public string Devices => $"{Prefix}/devices";
 
     /// <summary>
+    /// <b>EN:</b> <c>{prefix}/info</c> — retained bridge identity (name, version, release date,
+    /// copyright, RFXCom firmware). Published at startup, zigbee2mqtt-style.<br/>
+    /// <b>FR:</b> <c>{prefix}/info</c> — identité du bridge (nom, version, date de release,
+    /// copyright, firmware RFXCom), retained. Publié au démarrage, à la zigbee2mqtt.
+    /// </summary>
+    public string BridgeInfo => $"{Prefix}/info";
+
+    /// <summary>
     /// <b>EN:</b> <c>{prefix}/command/#</c> — wildcard for all inbound commands.<br/>
     /// <b>FR:</b> <c>{prefix}/command/#</c> — wildcard de toutes les commandes entrantes.
     /// </summary>

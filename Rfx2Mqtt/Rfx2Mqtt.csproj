@@ -6,7 +6,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Rfx2Mqtt</RootNamespace>
     <AssemblyName>Rfx2Mqtt</AssemblyName>
+    <Version>1.1.0</Version>
+    <Company>Chriss-Consulting</Company>
+    <Copyright>© $([System.DateTime]::UtcNow.Year) Chriss-Consulting</Copyright>
+    <Product>Rfx2Mqtt</Product>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Date de build, exposée via AppInfo.ReleaseDate (évaluée à la compilation) -->
+    <AssemblyMetadata Include="BuildDate" Value="$([System.DateTime]::UtcNow.ToString('yyyy-MM-dd'))" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="MQTTnet" Version="5.2.0.1603" />

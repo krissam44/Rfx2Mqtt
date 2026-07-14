@@ -330,6 +330,24 @@ public class MqttOptions
     /// <b>FR:</b> Délai entre tentatives de reconnexion MQTT (secondes).
     /// </summary>
     public int ReconnectDelaySec { get; set; } = 5;
+
+    /// <summary>
+    /// <b>EN:</b> Interval (seconds) between active MQTT PINGREQ probes. Detects "zombie"
+    /// connections where the broker stops responding without the TCP socket dropping (the
+    /// keep-alive alone does not always catch this). 0 = disabled.<br/>
+    /// <b>FR:</b> Intervalle (secondes) entre les pings MQTT actifs (PINGREQ). Détecte les
+    /// connexions "zombies" où le broker ne répond plus sans que le socket TCP tombe (le
+    /// keep-alive seul ne l'attrape pas toujours). 0 = désactivé.
+    /// </summary>
+    public int PingIntervalSec { get; set; } = 60;
+
+    /// <summary>
+    /// <b>EN:</b> Timeout (seconds) for one PINGREQ before the connection is declared dead and
+    /// a reconnection is forced.<br/>
+    /// <b>FR:</b> Timeout (secondes) d'un PINGREQ avant de déclarer la connexion morte et de
+    /// forcer une reconnexion.
+    /// </summary>
+    public int PingTimeoutSec { get; set; } = 10;
 }
 
 /// <summary>
