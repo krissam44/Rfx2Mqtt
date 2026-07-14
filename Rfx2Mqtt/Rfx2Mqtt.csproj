@@ -15,4 +15,8 @@
     <PackageReference Include="YamlDotNet" Version="16.*" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Rfx2Mqtt.Tests" />
+  </ItemGroup>
+
 </Project>

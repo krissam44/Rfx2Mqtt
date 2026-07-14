@@ -171,7 +171,7 @@ public class TempHumidityHandler : IPacketHandler
     /// Le code précédent ne signalait que niveau 0 (batterie morte) — trop tard
     /// pour anticiper un changement de pile.
     /// </summary>
-    private static string BatteryLabel(int level) => level <= 3 ? "low" : "ok";
+    internal static string BatteryLabel(int level) => level <= 3 ? "low" : "ok";
 
     #region Parsing 0x52 - Temp/Humidity
 
@@ -241,7 +241,7 @@ public class TempHumidityHandler : IPacketHandler
 
     #region Helpers décodage
 
-    private static (double Temperature, bool IsNegative) DecodeTemperature(byte high, byte low)
+    internal static (double Temperature, bool IsNegative) DecodeTemperature(byte high, byte low)
     {
         bool negative = (high & 0x80) != 0;
         double temp = ((high & 0x7F) * 256 + low) / 10.0;
@@ -249,14 +249,14 @@ public class TempHumidityHandler : IPacketHandler
         return (temp, negative);
     }
 
-    private static (int Battery, int Signal) DecodeBatterySignal(byte value)
+    internal static (int Battery, int Signal) DecodeBatterySignal(byte value)
     {
         int battery = (value >> 4) & 0x0F;
         int signal = value & 0x0F;
         return (battery, signal);
     }
 
-    private static int ExtractChannel(byte subType, byte id1, byte id2)
+    internal static int ExtractChannel(byte subType, byte id1, byte id2)
     {
         return subType switch
         {
@@ -278,7 +278,7 @@ public class TempHumidityHandler : IPacketHandler
     private const double MinBarometer = 800.0;
     private const double MaxBarometer = 1100.0;
 
-    private static bool IsPlausible(TempHumidityData data)
+    internal static bool IsPlausible(TempHumidityData data)
     {
         if (data.Temperature < MinTemperature || data.Temperature > MaxTemperature)
             return false;
