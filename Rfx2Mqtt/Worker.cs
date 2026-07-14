@@ -44,6 +44,7 @@ public class Worker : BackgroundService
     private readonly SomfyRtsHandler _somfyHandler;
     private readonly Lighting2Handler _chaconHandler;
     private readonly HomeAssistantDiscoveryService _discovery;
+    private readonly MatterBridgePublisher _matterBridge;
     private readonly AvailabilityService _availability;
     private readonly UiEventService _uiEvents;
     private readonly IDeviceRepository _deviceRepository;
@@ -61,6 +62,7 @@ public class Worker : BackgroundService
         SomfyRtsHandler somfyHandler,
         Lighting2Handler chaconHandler,
         HomeAssistantDiscoveryService discovery,
+        MatterBridgePublisher matterBridge,
         AvailabilityService availability,
         UiEventService uiEvents,
         IDeviceRepository deviceRepository,
@@ -76,6 +78,7 @@ public class Worker : BackgroundService
         _somfyHandler = somfyHandler;
         _chaconHandler = chaconHandler;
         _discovery = discovery;
+        _matterBridge = matterBridge;
         _availability = availability;
         _uiEvents = uiEvents;
         _deviceRepository = deviceRepository;
@@ -125,6 +128,9 @@ public class Worker : BackgroundService
 
                 // Publier le discovery HA pour les équipements configurés
                 await _discovery.PublishStartupDiscoveryAsync();
+
+                // Publier l'inventaire Matter Bridge
+                await _matterBridge.PublishAsync();
 
                 // Démarrer le suivi de disponibilité des capteurs
                 _availability.Start();

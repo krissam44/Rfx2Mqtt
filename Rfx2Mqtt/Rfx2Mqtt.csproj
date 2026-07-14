@@ -9,10 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MQTTnet" Version="5.1.*" />
-    <PackageReference Include="MudBlazor" Version="9.2.0" />
-    <PackageReference Include="System.IO.Ports" Version="9.0.*" />
-    <PackageReference Include="YamlDotNet" Version="16.*" />
+    <PackageReference Include="MQTTnet" Version="5.2.0.1603" />
+    <PackageReference Include="MudBlazor" Version="9.7.0" />
+    <PackageReference Include="System.IO.Ports" Version="10.0.10" />
+    <PackageReference Include="YamlDotNet" Version="18.1.0" />
   </ItemGroup>
 
   <ItemGroup>

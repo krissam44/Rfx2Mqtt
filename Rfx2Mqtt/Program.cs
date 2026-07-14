@@ -46,6 +46,7 @@ builder.Services.AddSingleton<RfxComProtocol>();
 builder.Services.AddSingleton<RfxComSerialService>();
 builder.Services.AddSingleton<MqttService>();
 builder.Services.AddSingleton<HomeAssistantDiscoveryService>();
+builder.Services.AddSingleton<MatterBridgePublisher>();
 builder.Services.AddSingleton<AvailabilityService>();
 
 // EN: Packet handlers — registered as concrete (for direct injection in Worker for command

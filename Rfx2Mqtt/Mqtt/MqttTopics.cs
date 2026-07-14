@@ -43,6 +43,16 @@ public class MqttTopics
     public string PermitJoinState => $"{Prefix}/config/permit_join";
 
     /// <summary>
+    /// <b>EN:</b> <c>{prefix}/devices</c> — retained JSON array of all configured devices with
+    /// their MQTT topics and Matter device type. Consumed by Matter bridges (e.g. MatterBridge)
+    /// to register bridged devices dynamically.<br/>
+    /// <b>FR:</b> <c>{prefix}/devices</c> — tableau JSON retained de tous les appareils configurés
+    /// avec leurs topics MQTT et leur type Matter. Consommé par les bridges Matter (ex. MatterBridge)
+    /// pour enregistrer dynamiquement les appareils.
+    /// </summary>
+    public string Devices => $"{Prefix}/devices";
+
+    /// <summary>
     /// <b>EN:</b> <c>{prefix}/command/#</c> — wildcard for all inbound commands.<br/>
     /// <b>FR:</b> <c>{prefix}/command/#</c> — wildcard de toutes les commandes entrantes.
     /// </summary>
